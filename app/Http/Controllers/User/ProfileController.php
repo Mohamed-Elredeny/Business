@@ -22,18 +22,62 @@ class ProfileController extends Controller
         }else{
             $this->myProfile =0;
         }
+        $unRelatedUsersIds = $this->getUnRelatedUsersIds($user_id);
+
         $myProfile = $this->myProfile;
         $profileId =User::find($user_id);
         $friends = $this->GetFirends($user_id);
         $firendship_state = $this->CheckUserFriendshipState($MyId,$user_id);
         $following_state = $this->CheckUserFollowingState($MyId,$user_id);
-        return view('User.profile.index_en',compact('myProfile','profileId','friends','firendship_state','following_state'));
+        $pending_send = $this->GetPendingSend($user_id);
+        $pending_receive = $this->GetPendingReceive($user_id);
+        return view('User.profile.index_en',compact('unRelatedUsersIds','myProfile','profileId','friends','pending_send','pending_receive','firendship_state','following_state'));
     }
     ///Get All Friends
     public function GetFirends($user_id){
         $friend_list = Friendship::where('senderId',$user_id)->orWhere('receiverId',$user_id)->where('stateId',1)->get();
         return $friend_list;
     }
+    public function GetAllRelatedUsersSender($user_id){
+        $friend_list = Friendship::where('senderId',$user_id)->get();
+        return $friend_list;
+    }
+    public function GetAllRelatedUsersReceiver($user_id){
+        $friend_list = Friendship::where('receiverId',$user_id)->get();
+        return $friend_list;
+    }
+    public function GetPendingSend($user_id){
+        $friend_list = Friendship::where('senderId',$user_id)->where('stateId',2)->get();
+        return $friend_list;
+    }
+    public function GetPendingReceive($user_id){
+        $friend_list = Friendship::where('receiverId',$user_id)->where('stateId',2)->get();
+        return $friend_list;
+    }
+    public function getUnRelatedUsersIds($user_id){
+        $system_users = User::get();
+        $ids =[];
+        $unrealed =[];
+        //Sender => Receivers
+        $GetAllRelatedUsersSender = $this->GetAllRelatedUsersSender($user_id);
+        foreach($GetAllRelatedUsersSender as $sender){
+           $ids [] =  $sender->receiverId;
+        }
+        //Receivers => Senders
+        $GetAllRelatedUsersReceiver = $this->GetAllRelatedUsersReceiver($user_id);
+        foreach($GetAllRelatedUsersReceiver as $receiver){
+            $ids [] =  $receiver->senderId;
+        }
+
+        foreach ($system_users as $user) {
+            if (!in_array( $user->id , $ids)) {
+                $unrealed [] = $user;
+            }
+
+        }
+        return $unrealed;
+    }
+
     public function CheckUserFriendshipState($user,$enemy){
         //Different users
         //1. User => From token

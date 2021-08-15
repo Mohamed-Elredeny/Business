@@ -1,6 +1,26 @@
 @extends('layouts.app')
-@section('content')
+<style>
+    ul {
+        list-style-type: none;
+    }
+    a:link {
+        color: black;
+    }
 
+    a:visited {
+        color: black;
+    }
+
+    a:hover {
+        color: black;
+
+    }
+
+    a:active {
+        color: black;
+    }
+</style>
+@section('content')
         <section
             id="ez-body__center-content"
             class="col-lg-10 row profile-center-content"
@@ -40,10 +60,12 @@
                            </div>
                            <div class="col-sm-7">
                                <i class="fa fa-city"></i>
-                               Friends
+                               <a data-toggle="modal" data-target="#exampleModalCenter" style="cursor: pointer">  Friends</a><br>
+
+
                            </div>
                            <div class="col-sm-3">
-                               <a href="">  {{count($friends)}}</a><br>
+                                {{count($friends)}}
                            </div>
 
                            <div class="col-sm-7 ">
@@ -354,4 +376,7 @@
             </div>
         </section>
 
+
+
 @endsection
+@include('User.profile.models.friends')
