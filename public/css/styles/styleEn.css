@@ -1,0 +1,47 @@
+body {
+  direction: ltr !important;
+  text-align: left; }
+
+  .side-navigation_user a .user-name {
+    padding-left: 10px;
+    padding-right: 0;}
+
+
+.side-navigation_list .list-group .list-item .list-link:link .list-icon,
+.side-navigation_list .list-group .list-item .list-link:visited .list-icon,
+.side-navigation_list .list-page .list-item .list-link:link .list-icon,
+.side-navigation_list .list-page .list-item .list-link:visited .list-icon {
+    margin-right: 10px;
+    margin-left: 0;}
+
+    .group-section .group-post-box .user-info .user-link .user-name,
+    .page-section .page-post-box .user-info .user-link .user-name {
+      left: 6.4rem;
+      right: 0;}
+
+      .group-section .group-post-box .user-info .sponser,
+      .page-section .page-post-box .user-info .sponser {
+        left: 6.4rem;
+        right: 0;}
+
+        .group-section .group-members .members-list .members-item .group-member .group-member-link_span,
+        .page-section .page-members .members-list .members-item .page-member .page-member-link_span {
+          margin-right: 0;
+          margin-left: 1rem }
+
+          .group-section .group-about .paragraph,
+          .page-section .page-about .paragraph {
+            padding-right: 40px;
+            padding-left: 0; }
+            
+            .button-3:not(:last-child) {
+              margin-right: 7px;
+              margin-left: 0px; }
+              
+              .page-section .page-section-header .page-info .page-info_heading-memers-count {
+                margin-right: 0;
+                margin-left: 16rem; }
+                @media only screen and (max-width: 51.1em) {
+                  .page-section .page-section-header .page-info .page-info_heading-memers-count {
+                    margin-right: 0;
+                    margin-left: 12rem; } }        
