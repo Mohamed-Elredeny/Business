@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Country;
+use App\Models\Inspiration;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -93,10 +97,68 @@ Route::group(['prefix' => LaravelLocalization::setLocale(), 'middleware' => ['lo
         Route::any('my-page','User\PagesController@myPage')->name('my-page')->middleware(['auth','verified']);
         #endregion
         //Redeny
-        Route::get('user/profile/{user_id}', 'User\ProfileController@index')->name('user.view.profile');
+         Route::get('user/profile/{user_id}', 'User\ProfileController@index')->name('user.view.profile');
+         Route::post('user/add/friend','User\ProfileController@addFriend')->name('user.add.friend');
+         Route::post('user/profile/add/friend', 'User\ProfileController@addFriendRedeny')->name('redeny.user.add.friend');
+         Route::post('user/profile/follow/friend', 'User\ProfileController@followFriendRedeny')->name('redeny.user.follow.friend');
+        Route::post('user/profile/unfollow/friend', 'User\ProfileController@unfollowFriendRedeny')->name('redeny.user.unfollow.friend');
 
+
+        Route::post('user/profile/refuse/friend', 'User\ProfileController@RefuseFriendRedeny')->name('redeny.user.refuse.friend');
+        Route::post('user/profile/accept/friend', 'User\ProfileController@AcceptFriendRedeny')->name('redeny.user.accept.friend');
+        Route::group(['prefix'=>'profile','namespace'=>'User'],function () {
+            Route::post('user/edit/profile', 'ProfileController@editProfile')->name('redeny.user.edit.profile');
+            Route::post('user/add/friend', 'ProfileController@addFriendProfile')->name('redeny.user.add.friend.profile');
+            Route::post('user/refuse/friend', 'ProfileController@RefuseFriendProfile')->name('redeny.user.refuse.friend.profile');
+            Route::post('user/accept/friend', 'ProfileController@AcceptFriendProfile')->name('redeny.user.accept.friend.profile');
+            Route::post('user/follow/friend', 'ProfileController@followFriendProfile')->name('redeny.user.follow.friend.profile');
+            Route::post('user/unfollow/friend', 'ProfileController@unfollowFriendProfile')->name('redeny.user.unfollow.friend.profile');
+            Route::post('user/add/inspiration', 'ProfileController@addInspirationProfile')->name('redeny.user.add.inspiration.profile');
+            Route::post('user/remove/inspiration', 'ProfileController@removeInspirationProfile')->name('redeny.user.remove.inspiration.profile');
+            Route::post('user/add/music', 'ProfileController@addMusic')->name('redeny.user.add.music');
+            Route::post('user/list/music', 'ProfileController@MusicList')->name('redeny.user.list.music');
+            Route::post('user/list/sport', 'ProfileController@SportList')->name('redeny.user.list.sport');
+            Route::post('user/list/hoppy', 'ProfileController@HobbyList')->name('redeny.user.list.hoppy');
+            Route::post('user/list/inspiration', 'ProfileController@inspirationList')->name('redeny.user.list.inspiration');
+
+            Route::get('user/profile/view/{user_id}/{component}', 'ProfileController@viewComponent')->name('redeny.view.component');
+
+
+        });
+        Route::Group(['namespace'=>'User'],function(){
+            Route::get('chat','ChatController@index');
+            Route::get('chats','ChatController@chats');//View all Chats
+          Route::get('chats/messages','ChatController@messages');//View all Chat messages
+          Route::post('chats/messages/add','ChatController@addMessage');//Add New Message
+        });
 
     });
-
+    Route::get('/directions', function () {
+        $url = 'https://countriesnow.space/api/v0.1/countries';
+        $response = file_get_contents($url);
+        $newsData = json_decode($response);
+        $records = $newsData->data;
+        //0 20
+        for($i=0;$i<20;$i++){
+            $country = $records[$i]->country;
+            $cities = $records[$i]->cities;
+            $oneCountry= Country::create([
+                'name' => $country,
+            ]);
+            foreach ($cities as $city){
+                DB::table('cities')->insert([
+                    'name' => $city,
+                    'country_id'=>$oneCountry->id
+                ]);
+            }
+        }
+        return 1;
+    });
+    Route::get('hh',function (){
+        Inspiration::create([
+            'user_id' => 1,
+            'inspirerende_id' => 3
+        ]);
+    });
 
 });

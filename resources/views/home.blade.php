@@ -80,7 +80,6 @@
 
 
             </div>
-            @if(count($stories) < 0)
             @foreach($stories as $story)
                 <div onclick="addStoryViews({{$story->publisher->id}})" class="story" data-toggle="modal" data-target="#show-story-modal-{{$story->publisher->id}}" id="story-{{$story->publisher->id}}">
                     <div class="owner-info d-flex align-items-center">
@@ -219,7 +218,6 @@
                     </div>
                 </div>
             @endforeach
-            @endif
         </div>
 
         <div class="col-12" id="success-message" style="display: none">

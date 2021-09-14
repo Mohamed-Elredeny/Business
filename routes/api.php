@@ -36,9 +36,12 @@ Route::group([
     Route::post('removeGroup', 'GroupController@removeGroup');
     Route::post('editGroup', 'GroupController@updateGroup');
     Route::post('group/details', 'GroupController@show');
+    Route::post('page/details', 'PageController@show');
 
     Route::post('addReport', 'GroupController@addReport');
     Route::post('addPost', 'GroupController@addPost');
+    Route::post('addPostPage', 'PageController@addPost');
+
     Route::post('removePost', 'GroupController@removePost');
     Route::post('getMyPosts', 'GroupController@getMyPosts');
     Route::post('addComment', 'GroupController@addComment');
@@ -50,12 +53,14 @@ Route::group([
     Route::post('removeLike', 'GroupController@removeLike');
     Route::post('updateLike', 'GroupController@updateLike');
     Route::get('get_all_reacts', 'GroupController@get_all_reacts');
+    Route::post('Api/posts','GroupController@getPosts');
 
     //Services
     Route::post('addService', 'ServiceController@addService');
 
 
     Route::post('group/members', 'GroupController@membersGroupWithState');
+    Route::post('page/members/collection', 'PageController@membersPageWithCollections');
     Route::post('group/members/collection', 'GroupController@membersGroupWithCollections');
     Route::post('group/members/collection/pending', 'GroupController@membersGroupWithCollectionsPending');
 
@@ -63,12 +68,16 @@ Route::group([
     Route::post('group/admins/assign', 'GroupController@assignGroupAdmin');
 
     Route::post('group/media', 'GroupController@GetGroupMedia');
+    Route::post('page/media', 'PageController@GetPageMedia');
 
 
 
     Route::post('pages/{flag}', 'PageController@getPages');
     Route::post('likepage', 'PageController@likePage');
     Route::post('addPage', 'PageController@addPage');
+    Route::post('removeGroup', 'GroupController@removeGroup');
+    Route::post('removePage', 'PageController@removePage');
+
     Route::post('editPage', 'PageController@updatePage');
     Route::post('page/admins/assign', 'PageController@assignPageAdmin');
 
@@ -85,10 +94,11 @@ Route::group([
     Route::post('unfollow', 'FriendshipController@unfollow');
     //Check Friendship state
     #endregion
-
+    //Posts
+    Route::post('api/posts','GroupController@getPosts');
     Route::get('savedposts', 'PostController@getSavedPosts');
     Route::post('savepost', 'PostController@savePost');
-    Route::resource('posts', 'PostController');
+    Route::resource('posts', 'posts\PostController');
     //Comments
     Route::post('posts/update/{post}', 'PostController@update');
     Route::resource('CommentController', 'comments');
@@ -103,7 +113,6 @@ Route::group([
     #endregion
 });
 Route::group([
-    'middleware' =>'checkLang','check_verified',
     'namespace' => 'Api',
 ], function ($router) {
     Route::post('register', 'AuthController@register');
@@ -122,5 +131,9 @@ Route::group([
     Route::post('search/services/', 'ServiceController@searchService');
     Route::get('cities/', 'CitiesController@getCities');
 
+    #region cities
+    Route::get('profile/{user_id}', 'ProfileController@index');
+
+    #endregion
 });
 

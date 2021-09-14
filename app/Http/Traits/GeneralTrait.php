@@ -21,18 +21,34 @@ trait GeneralTrait
 
     public function returnSuccessMessageWithStatus($msg ,$code,$status)
     {
+        $data=[];
+        $data['message'] = $msg;
         return [
             'status' => $status,
             'msg' => $msg,
-            'code'=>$code
+            'code'=>$code,
+            'data'=>$data
+        ];
+    }
 
+
+    public function returnSuccessMessageWithStatusLikes($msg ,$code,$status)
+    {
+
+        return [
+            'status' => $status,
+            'code'=>$code,
+            'data'=>$msg
         ];
     }
         public function returnSuccessMessage($msg , $errNum = null)
         {
+            $data=[];
+            $data['message'] = $msg;
             return [
             'status' => true,
-            'msg' => $msg
+            'msg' => $msg,
+            'data'=> $data
             ];
         }
 
@@ -56,6 +72,15 @@ trait GeneralTrait
         for ($i = 0; $i < count($keys); $i++) {
             $data[$keys[$i]] = $values[$i];
         }
+
+        return response()->json([
+            'status' => $status,
+            'msg' => $msg,
+            'data' => $data
+        ]);
+    }
+    public function returnDataWithStatusList( $data,$status,$msg='')
+    {
 
         return response()->json([
             'status' => $status,

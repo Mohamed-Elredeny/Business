@@ -42,9 +42,8 @@ return [
         ],
 
         'api' => [
-            'driver' => 'token',
+            'driver' => 'jwt',
             'provider' => 'users',
-            'hash' => false,
         ],
     ],
 
@@ -96,8 +95,8 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => 'password_resets',
-            'expire' => 60,
-            'throttle' => 60,
+            'expire' => 60*60*7*4*12,
+            'throttle' => 60*60*7*4*12,
         ],
     ],
 
@@ -112,6 +111,6 @@ return [
     |
     */
 
-    'password_timeout' => 10800,
+    'password_timeout' => 60*60*7*4*12,
 
 ];

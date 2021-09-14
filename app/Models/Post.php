@@ -9,6 +9,7 @@ class Post extends Model
     //'
     protected $table = 'posts';
     protected $fillable = [
+        'id',
         'price',
         'body',
         'tags',
@@ -25,7 +26,7 @@ class Post extends Model
     ];
 
     public function media() {
-        return $this->hasMany('App\Models\Media');
+        return $this->hasMany('App\Models\Media','id');
     }
 
     public function state() {

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Friendship;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\GeneralTrait;
 use App\models\Following;
+use App\models\Friendship;
 use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +18,8 @@ class FriendshipController extends Controller
     public function __construct(){
         if(auth('api')->user()){
             $this->valid_token =1;
-            $user = auth('api')->user();
-            $this->user_verified = $user['email_verified_at'];
+            $this->user = auth('api')->user();
+            $this->user_verified = $this->user['email_verified_at'];
         }else{
             $this->valid_token =0;
         }
@@ -47,14 +47,25 @@ class FriendshipController extends Controller
             $requestType = $request->requestType;
             switch ($requestType) {
                 case 'addFriendRequest':
-                    $senderId = $request->senderId;
+                    //Iam the sender
+                    $senderId = $this->user->id;
                     $receiverId = $request->receiverId;
                     $state = 2;
-                    $friendRequest = Friendship::create([
-                        'senderId' => $senderId,
-                        'receiverId' => $receiverId,
-                        'stateId' => $state,
-                    ]);
+                    $is_there_relation = Friendship::where('senderId',$senderId)->where('receiverId',$receiverId)->get();
+                    if(count($is_there_relation) > 0){
+                        $data = [
+                           'msg'=> 'You have sent your request successfully'
+                        ];
+                        return $this->returnSuccessMessageWithStatusLikes($data, 200,false);
+
+                    }else{
+                        $friendRequest = Friendship::create([
+                            'senderId' => $senderId,
+                            'receiverId' => $receiverId,
+                            'stateId' => $state,
+                        ]);
+                    }
+
                     //Sender is the follower
                     //Receiver is the following
                     $follower = $senderId;
@@ -64,8 +75,14 @@ class FriendshipController extends Controller
                         'followingId' => $following,
                     ]);
                     $msg = 'You have sent your request successfully';
-                    return $this->returnSuccessMessage($msg, 200);
+                    $data = [
+                        'msg'=>$msg,
+                        'friendship'=>$friendRequest,
+                        'following'=>$followingRequest
+                    ];
+                    return $this->returnSuccessMessageWithStatusLikes($data, 200,true);
                 case 'acceptFriendRequest':
+                    // Iam the receiver
                     $friendshipId = $request->friendshipId;
                     $friendshipRecord = Friendship::find($friendshipId);
                     $senderId = $friendshipRecord->senderId;
@@ -112,7 +129,7 @@ class FriendshipController extends Controller
             if (!$this->user_verified) {
                 return $this->unVerified($this->user_verified);
             }
-            $auth_user = User::where('remember_token',$request->token)->get()[0]->id;
+            $auth_user = $this->user->id;
             $followingId = $request->followingId;
             $following = DB::table('following')->insert([
                 'followerId' => $auth_user,
@@ -129,7 +146,7 @@ class FriendshipController extends Controller
             if (!$this->user_verified) {
                 return $this->unVerified($this->user_verified);
             }
-            $auth_user = User::where('remember_token',$request->token)->get()[0]->id;
+            $auth_user = $this->user->id;
             $followingId = intval($request->followingId);
             //following
             //followerId

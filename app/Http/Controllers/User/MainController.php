@@ -680,7 +680,6 @@ class MainController extends Controller
             }
         }
 
-
         foreach ($expected_friends as $friend) {
             $friend->followers = DB::table('following')->where('followingId', $friend->id)->count();
         }

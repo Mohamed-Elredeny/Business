@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Media extends Model
 {
-
-
     protected $table = 'media';
     protected $fillable = [
         'filename',
@@ -16,7 +14,7 @@ class Media extends Model
         'model_type'
     ];
     public function post() {
-        return $this->belongsTo('App\Models\Post');
+        return $this->belongsTo('App\Models\Post','model_id');
     }
 
 }

@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers\Api;
-use App\Friendship;
+use App\models\Friendship;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\GeneralTrait;
 use App\models\Category;
@@ -57,12 +57,13 @@ class GroupController extends Controller
             if (!$this->user_verified) {
                 return $this->unVerified($this->user_verified);
             }
+            $lang = 'ar';
             $profile_image = time().'.'.$request->profile_image->extension();
             $request->profile_image->move(public_path('assets/images/groups'), $profile_image);
 
             $cover_image = time().'.'.$request->cover_image->extension();
             $request->cover_image->move(public_path('assets/images/groups'), $cover_image);
-           // $user_id = User::where('remember_token',$request->token)->get();
+            $user_id = User::where('remember_token',$request->token)->get();
             $name = $request->name;
             $description = $request->description;
             $category_id  = $request->category_id;
@@ -87,10 +88,46 @@ class GroupController extends Controller
                 'isAdmin'=>1
             ]);
 
-            $msg = 'group created successfully';
-            return $this->returnSuccessMessage($msg,200);
+
+            #region groupdata
+
+
+            if ($group) {
+                $url_profile_image = $group['profile_image'];
+                $url_cover_image = $group['cover_image'];
+                $group['profile_image'] = 'https://businesskalied.com/api/business/public/assets/images/groups/'.$url_profile_image;
+                $group['cover_image'] = 'https://businesskalied.com/api/business/public/assets/images/groups/'.$url_cover_image;
+                $group['members_count'] = $this->membersGroup($group->id);
+                $group->privacy = intval($group->privacy);
+                $user_group = DB::table('group_members')
+                    ->where([['group_id',$group->id],['user_id',$this->user->id]])
+                    ->first();
+                if ($user_group) {
+                    $group['entered'] = intval($user_group->state);
+                }
+                else{
+                    $group['entered'] = 0;
+                }
+                unset(
+                    $group->created_at,
+                    $group->updated_at,
+                    $group->category_id,
+                    $group->publisher_id,
+                    $group->cover_image,
+                    $group->description,
+                    $group->rules
+                );
+
+                //return $this->returnData(['groups','count'],[$groups,$count]);
+
+                return $this->returnDataWithStatus(['group'], [$group], true,'group details');
+            }
+            return $this->returnDataWithStatus(['group'], [[]], false,'group details');
+
         }
+
     }
+
     public function updateGroup(Request $request){
         if($this->valid_token == 0) {
             return $this->unValidToken($this->valid_token);
@@ -164,7 +201,7 @@ class GroupController extends Controller
         //Media
         $group = Group::find($group_id);
         $posts  = Post::where('group_id',$group_id)->get();
-       if(count($posts) > 0) {
+        if(count($posts) > 0) {
             foreach ($posts as $post) {
                 $post_media = Media::where('model_type','post')->where('model_id',$post->id)->get();
                 foreach($post_media as $media) {
@@ -181,7 +218,7 @@ class GroupController extends Controller
             }
         }
         $group->delete();
-       return $this->returnSuccessMessageWithStatus('Group has been successfully deleted',200,true);
+        return $this->returnSuccessMessageWithStatus('Group has been successfully deleted',200,true);
     }
     //2. View all groups
     //3. View my groups
@@ -194,7 +231,7 @@ class GroupController extends Controller
                 return $this->unVerified($this->user_verified);
             }
             $token = $request->token;
-/*            $user = User::where('remember_token',$token)->first();*/
+            /*            $user = User::where('remember_token',$token)->first();*/
             if($flag == 0) {
                 $groups = Group::all();
                 $count = $groups->count();
@@ -270,19 +307,19 @@ class GroupController extends Controller
         $pending = [];
         $accepted= [];
         $token = $request->token;
-/*        $user = User::where('remember_token',$token)->get();*/
+        /*        $user = User::where('remember_token',$token)->get();*/
         $user_groups_state =  GroupMember::where('user_id', $this->user->id)->get();
         foreach($user_groups_state as $groups){
 
             switch ($groups->state){
                 case '2':
-                     $group = Group::find($groups->group_id);
+                    $group = Group::find($groups->group_id);
                     $url_profile_image = $group['profile_image'];
                     $url_cover_image = $group['cover_image'];
                     $group['profile_image'] = 'https://businesskalied.com/api/business/public/assets/images/groups/'.$url_profile_image;
                     $group['cover_image'] = 'https://businesskalied.com/api/business/public/assets/images/groups/'.$url_cover_image;
-                     $group['members_count'] = $this->membersGroup($group->id);
-                     $group['entered']=2;
+                    $group['members_count'] = $this->membersGroup($group->id);
+                    $group['entered']=2;
                     $pending []=$group;
                     break;
                 case '1':
@@ -320,7 +357,7 @@ class GroupController extends Controller
             $token = $request->token;
             $group_id = $request->group_id;
             $flag = $request->flag;
-/*            $user = User::where('remember_token', $token)->get();*/
+            /*            $user = User::where('remember_token', $token)->get();*/
             $group = Group::find($group_id);
             if ($flag == 0) {
                 $is_member = GroupMember::where('user_id',$this->user->id)->where('group_id',$group_id)->get();
@@ -379,7 +416,7 @@ class GroupController extends Controller
                             'enteredId'=>1
                         ];
                         return $this->returnDataWithStatus(['user'], [$enteredId],false,'group must have at least one admin');
-                       //return $this->returnSuccessMessageWithStatus('group must have at least one admin',200,false);
+                        //return $this->returnSuccessMessageWithStatus('group must have at least one admin',200,false);
                     }
                 }else{
                     $current_group = GroupMember::find($current_group_id);
@@ -399,12 +436,12 @@ class GroupController extends Controller
         $group = Group::find($id);
         //$related_groups = $this->relatedGroups($group->category_id);
         $group_members = GroupMember::where('group_id',$id)->get();
-       /* $register=0;
-        foreach($group_members as $member){
-            if((Auth::user()->id) == $member->user_id){
-                $register = 1;
-            }
-        }*/
+        /* $register=0;
+         foreach($group_members as $member){
+             if((Auth::user()->id) == $member->user_id){
+                 $register = 1;
+             }
+         }*/
         //$isAdmin =1;
         //return view('User.groups.members',compact('group','group_members','register','isAdmin','related_groups'));
         return count($group_members);
@@ -440,22 +477,31 @@ class GroupController extends Controller
             $pending = GroupMember::where('group_id', $group_id)->where('state', 2)->get();
             $user = $this->user->id;
             foreach( $pending as $enemy){
-                 $enemy_id= $enemy->id;
-                 $enemy->friendship = $this->CheckUserFriendshipState($user,$enemy_id);
-                 $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
-
-
+                $enemy_id= $enemy->id;
+                $enemy->friendship = $this->CheckUserFriendshipState($user,$enemy_id);
+                if($enemy->friendship == 'guest'){
+                    $enemy->friendship_id = 99;
+                }else{
+                    $enemy->friendship_id =  Friendship::where('senderId',$user)->where('receiverId',$enemy)->get()[0]->id;
+                }
+                $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
             }
 
             $accepted = GroupMember::where('group_id', $group_id)->where('state', 1)->where('isAdmin',0)->get();
             foreach( $accepted as $enemy){
                 $enemy_id= $enemy->id;
                 $enemy->friendship = $this->CheckUserFriendshipState($user,$enemy_id);
+                if($enemy->friendship == 'guest'){
+                    $enemy->friendship_id = 99;
+                }else{
+                    $enemy->friendship_id =  Friendship::where('senderId',$user)->where('receiverId',$enemy)->get()[0]->id;
+                }
                 $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
                 $user = $this->getUserById($enemy->user_id);
                 $enemy->user_id = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
                 unset(
                     $enemy->created_at,
@@ -467,11 +513,18 @@ class GroupController extends Controller
             foreach( $admins as $enemy){
                 $enemy_id= $enemy->id;
                 $enemy->friendship = $this->CheckUserFriendshipState($user,$enemy_id);
+                if($enemy->friendship == 'guest'){
+                    $enemy->friendship_id = 99;
+                }else{
+                    $enemy->friendship_id =  Friendship::where('senderId',$user)->where('receiverId',$enemy)->get()[0]->id;
+                }
                 $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
                 $user = $this->getUserById($enemy->user_id);
                 $enemy->user_id = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
+                    //  'friendship_id'=> Friendship::where('senderId', );
                 ];
                 unset(
                     $enemy->created_at,
@@ -497,19 +550,25 @@ class GroupController extends Controller
             //$group_state = $request->state;
 
             $pending = [];
-          /*  $accepted = [];
-            $admins = [];*/
+            /*  $accepted = [];
+              $admins = [];*/
             /*$group = Group::find($group_id);*/
             $pending = GroupMember::where('group_id', $group_id)->where('state', 2)->get();
             $user = $this->user->id;
             foreach( $pending as $enemy){
                 $enemy_id= $enemy->id;
                 $enemy->friendship = $this->CheckUserFriendshipState($user,$enemy_id);
+                if($enemy->friendship == 'guest'){
+                    $enemy->friendship_id = 99;
+                }else{
+                    $enemy->friendship_id =  Friendship::where('senderId',$user)->where('receiverId',$enemy)->get()[0]->id;
+                }
                 $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
                 $user = $this->getUserById($enemy->user_id);
                 $enemy->user_id = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
                 unset(
                     $enemy->created_at,
@@ -530,7 +589,7 @@ class GroupController extends Controller
                 $enemy->follow = $this->CheckUserFollowingState($user,$enemy_id);
             }*/
             $group_members =[
-               'pending'=>$pending,
+                'pending'=>$pending,
             ];
             return $this->returnData(['group_members'], [$group_members]);
         }
@@ -545,6 +604,8 @@ class GroupController extends Controller
          */
         #region different States
         //Friend
+
+
         //pending login => request  cancel request
         //cancel
         //accepted => cancel request
@@ -599,11 +660,11 @@ class GroupController extends Controller
             $state = intval($request->state);
             $group = GroupMember::find($request_id);
             if($state == 0) {
-            $group->delete();
-            $msg = 'request has delete successfully';
-            return $this->returnDataWithStatus(['request'], [['msg'=>$msg]],true, $msg);
+                $group->delete();
+                $msg = 'request has delete successfully';
+                return $this->returnDataWithStatus(['request'], [['msg'=>$msg]],true, $msg);
 
-/*            return $this->returnSuccessMessageWithStatus($msg,200,true);*/
+                /*            return $this->returnSuccessMessageWithStatus($msg,200,true);*/
             }else {
                 $group->update([
                     'state' => $state
@@ -631,7 +692,8 @@ class GroupController extends Controller
             $user = $this->getUserById($group->publisher_id);
             $group->user = [
                 'name'=>$user->name,
-                'personal_image'=>$user->personal_image
+                'personal_image'=>$user->personal_image,
+                'user_id'=>$user->id
             ];
             $group['register']= $register;
             $group['members_count'] = $this->membersGroup($group->id);
@@ -652,7 +714,7 @@ class GroupController extends Controller
                 return $this->unVerified($this->user_verified);
             }
             $lang =  $request->header('lang');
-/*            $user_id = User::where('remember_token',$request->token)->get();*/
+            /*            $user_id = User::where('remember_token',$request->token)->get();*/
             $user_id =$this->user->id;
             $group_id = $request->group_id;
             $group = Group::find($group_id);
@@ -683,17 +745,19 @@ class GroupController extends Controller
                 $user = $this->getUserById($group->publisher_id);
                 $group->publisher_id = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
 
                 //$related_groups = $this->relatedGroups($group->category_id,$user_id);
                 $group_members = GroupMember::where('group_id', $group_id)->get();
-                $group_posts = Post::where('group_id', $group_id)->orderBy('created_at', 'ASC')->get();
+                /*$group_posts = Post::where('group_id', $group_id)->orderBy('created_at', 'ASC')->get();
                 foreach($group_posts as $groupx){
                     $user = $this->getUserById($groupx->publisherId);
                     $groupx->user = [
                         'name'=>$user->name,
-                        'personal_image'=>$user->personal_image
+                        'personal_image'=>$user->personal_image,
+                        'user_id'=>$user->id
                     ];
                     unset(
                         $groupx->postTypeId,
@@ -711,12 +775,18 @@ class GroupController extends Controller
                     );
 
                     $groupx->likes_num = count(Likes::where('model_type','post')->where('model_id',$groupx->id)->get());
-                    $groupx->comments_num = $this->GetCommentsNumber($groupx->id);
+                    $groupx->react_num =Likes::where('model_type','post')->where('model_id',$groupx->id)->where('senderId',$user_id)->get();
+                    if(count($groupx->react_num) > 0){
+                        $groupx->react_num =intval($groupx->react_num[0]->reactId);
+                    }else{
+                        $groupx->react_num = 99;
+                    }
+                    $groupx->comments_num = $this->GetCommentsNumber($groupx->id,'post');
                     $groupx->shares_num = $this->getPostshareNumber($group_id,$groupx->id);
 
                     $groupx->images = $this->Fetchmedia($groupx->id, 'image');
                     $groupx->videos = $this->Fetchmedia($groupx->id, 'video');
-                }
+                }*/
 
                 //dd($group_members);
                 $register = 0;
@@ -738,7 +808,6 @@ class GroupController extends Controller
                     //'member_count'=>$group['members_count'],
                     'register'=>$register,
                     'isAdmin'=>$is_admin,
-                    'group_posts'=>$group_posts,
                     //'related_groups'=>$related_groups
                 ];
                 return $this->returnData(['group'], [$response], 'group details');
@@ -750,15 +819,15 @@ class GroupController extends Controller
         }
 
     }
-    public function GetCommentsNumber($post_id){
+    public function GetCommentsNumber($post_id,$model_type){
         $res =0;
-        $comments = Comment::where('model_type','post')->where('model_id',$post_id)->get();
+        $comments = Comment::where('model_type',$model_type)->where('model_id',$post_id)->get();
         $res += count($comments);
         if(count($comments)>0){
-           foreach($comments as $comment){
-               $commentsx = Comment::where('model_type','comment')->where('model_id',$comment->id)->get();
-               $res += count($commentsx);
-           }
+            foreach($comments as $comment){
+                $commentsx = Comment::where('model_type','comment')->where('model_id',$comment->id)->get();
+                $res += count($commentsx);
+            }
         }
         return $res;
     }
@@ -807,44 +876,6 @@ class GroupController extends Controller
             if (!$this->user_verified) {
                 return $this->unVerified($this->user_verified);
             }
-            /*            $group = Group::find($request->group_id);
-                        $category = $group->category_id;
-                        $user_id = User::where('remember_token',$request->token)->get()[0]->id;
-                        $rules = [
-                            'body' => 'required', 'not_regex:/([%\$#\*<>]+)/',
-            //                'privacy_id' => 'required|integer',
-                            'media' => 'nullable',
-                            'media.*' => 'mimes:mpeg,ogg,mp4,webm,3gp,mov,flv,avi,wmv,ts,jpg,jpeg,png|max:100040',
-            //                'category_id' => 'required|integer'
-                        ];
-                        $this->validate($request, $rules);
-                        $files = $request->file('media');*/
-            /*
-                        if ($request->hasFile('media')) {
-                            foreach ($files as $file) {
-                                $image_ext = ['jpg', 'png', 'jpeg'];
-                                $video_ext = ['mpeg', 'ogg', 'mp4', 'webm', '3gp', 'mov', 'flv', 'avi', 'wmv', 'ts'];
-                                $fileextension = $file->getClientOriginalExtension();
-
-                                if (in_array($fileextension, $image_ext)) {
-                                    $mediaType = 'image';
-                                } else {
-                                    $mediaType = 'video';
-                                }
-                                $filename = $file->getClientOriginalName();
-                                $file_to_store = time() . '_' . explode('.', $filename)[0] . '_.' . $fileextension;
-                                //return $file->move('media', $file_to_store);
-                                if ($file->move('media', $file_to_store)) {
-                                    Media::create([
-                                        'filename' => $file_to_store,
-                                        'mediaType' => $mediaType,
-                                        'model_id' => $request->model_id,
-                                        'model_type' => 'post'
-                                    ]);
-                                }
-                            }
-                        }*/
-           // $user_id = User::where('remember_token',$request->token)->get()[0]->id;
             $user_id = $this->user->id;
             $group = Group::find($request->group_id);
             $category = Category::find($group->category_id)->id;
@@ -862,19 +893,13 @@ class GroupController extends Controller
                     'post_id' => $request->post_id,
                     'price' => null
                 ]);
-/*
+
                 $user = $this->getUserById($groupx->publisherId);
                 $groupx->user = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
-                $groupx->likes_num = count(Likes::where('model_type','post')->where('model_id',$groupx->id)->get());
-                $groupx->comments_num = $this->GetCommentsNumber($groupx->id);
-                $groupx->shares_num = $this->getPostshareNumber($groupx->group_id,$groupx->id);
-                $this->media($request,$groupx->id);
-
-                $groupx->images = $this->Fetchmedia($groupx->id, 'image');
-                $groupx->videos = $this->Fetchmedia($groupx->id, 'video');
                 unset(
                     $groupx->postTypeId,
                     $groupx->categoryId,
@@ -889,19 +914,38 @@ class GroupController extends Controller
                     $groupx->created_at,
                     $groupx->updated_at,
                 );
-*/
+
+                $groupx->likes_num = count(Likes::where('model_type','post')->where('model_id',$groupx->id)->get());
+                $groupx->react_num = count(Likes::where('model_type','post')->where('model_id',$groupx->id)->where('senderId',$user_id)->get());
+                if($groupx->react_num > 0){
+                    $groupx->react_num =intval( $groupx->react_num[0]->reactId);
+                }else{
+                    $groupx->react_num = 99;
+                }
+                $groupx->comments_num = $this->GetCommentsNumber($groupx->id,'post');
+                $groupx->shares_num = $this->getPostshareNumber($groupx->group_id,$groupx->id);
+                $this->media($request,$groupx->id);
+
+                $groupx->images = $this->Fetchmedia($groupx->id, 'image');
+                $groupx->videos = $this->Fetchmedia($groupx->id, 'video');
+
+                /*
+                   $this->media($request,$groupx->id);
+                   $groupx->images = $this->Fetchmedia($groupx->id, 'image');
+                   $groupx->videos = $this->Fetchmedia($groupx->id, 'video');*/
             }else{
                 $groupx = null;
             }
             $msg = '';
             if ($groupx) {
                 $msg = 'post has created successfully';
-                return $this->returnSuccessMessageWithStatus($msg,200,true);
-                //return $this->returnData(['post'], [$groupx],$msg);
-               // return $this->returnData([], $values,$msg);
+                //return $this->returnSuccessMessageWithStatus($msg,200,true);
+                return $this->returnDataWithStatus(['post'], [$groupx],true,$msg);
+                // return $this->returnData([], $values,$msg);
             } else {
                 $msg = 'Error during creating your post';
-                return $this->returnSuccessMessageWithStatus($msg,200,true);
+                return $this->returnDataWithStatus(['post'], [$groupx],true,$msg);
+                // return $this->returnSuccessMessageWithStatus($msg,200,true);
 
             }
         }
@@ -932,10 +976,14 @@ class GroupController extends Controller
                 $post->delete();
                 $msg = '';
                 $msg = 'post has deleted successfully';
-                return $this->returnSuccessMessageWithStatus($msg, 200, true);
+                return $this->returnDataWithStatus(['msg'], [$msg],true,$msg);
+
+                /*                return $this->returnSuccessMessageWithStatus($msg, 200, true);*/
             } else {
                 $msg = 'Error during deleting your post';
-                return $this->returnSuccessMessageWithStatus($msg, 200, false);
+                return $this->returnDataWithStatus(['msg'], [$msg],false,$msg);
+
+                /*                return $this->returnSuccessMessageWithStatus($msg, 200, false);*/
 
             }
         }
@@ -944,10 +992,10 @@ class GroupController extends Controller
         if($this->valid_token == 0) {
             return $this->unValidToken($this->valid_token);
         }else {
-                if (!$this->user_verified) {
-                    return $this->unVerified($this->user_verified);
-                }
-/*            $user_id = User::where('remember_token',$request->token)->get()[0]->id;*/
+            if (!$this->user_verified) {
+                return $this->unVerified($this->user_verified);
+            }
+            /*            $user_id = User::where('remember_token',$request->token)->get()[0]->id;*/
             $user_id =$this->user->id;
 
             $group_id = $request->group_id;
@@ -958,7 +1006,7 @@ class GroupController extends Controller
             }
             return $this->returnData(['my posts'], [$myPosts], 'my posts');
         }
-        }
+    }
     //Comments
     public function addComment(Request $request){
         if($this->valid_token == 0) {
@@ -970,13 +1018,61 @@ class GroupController extends Controller
             $model_type = $request->model_type;
             $model_id = $request->model_id;
             $body = $request->body;
-            Comment::create([
+            $comment=  Comment::create([
                 'user_id' => $this->user->id,
                 'body'=>$body,
                 'model_type'=>$model_type,
                 'model_id'=>$model_id
             ]);
-            return $this->returnSuccessMessageWithStatus('your comment has been added successfully',200,true);
+            $comment->model_id = intval($comment->model_id);
+            $msg = 'your comment has been added successfully';
+            $user = $this->getUserById($comment->user_id);
+            unset(
+                $comment->user_id,
+                $comment->created_at,
+                $comment->updated_at
+            );
+            $comment->user = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'image' => $user->personal_image,
+            ];
+            /* $postCommentsRelated =Comment::where('model_type','comment')->where('model_id',$comment->id)->get();
+             foreach($postCommentsRelated as $commentRelated) {
+                 $user =  $this->getUserById($commentRelated->user_id);
+                 $commentRelated->likes = $likes;
+                 $commentRelated->isLiked = $isliked;
+                 $commentRelated->user =[
+                     'id'=>$user->id,
+                     'name'=>$user->name,
+                     'image'=>$user->personal_image,
+                     'belongs_to'=> $this->getUserById(Comment::find($commentRelated->model_id)->user_id)->name,
+                     'reacts'=>$this->reacts($commentRelated->id,$lang,'comment')
+                 ];
+             }*/
+            //Number of Likes for each comment
+            $comment->likes_num = count(Likes::where('model_type', $model_type)->where('model_id', $model_id)->get());
+            $comment->comments_num = count(Comment::where('model_type', $model_type)->where('model_id', $model_id)->get());
+            if(count(Likes::where('model_type', $model_type)->where('model_id', $model_id)->where('senderId',$this->user->id)->get()) > 0){
+                $isliked = 1;
+            }else{
+                $isliked=0;
+            }
+            $mayBeMine = Comment::where('model_type', $model_type)->where('user_id', $this->user->id)->get();
+            if(count($mayBeMine) > 0){
+                $comment->myComment = 1;
+            }else{
+                $comment->myComment = 0;
+            }
+            //Check if the current user has liked or not
+            $comment->isLiked = $isliked;
+            //$comment->postCommentsRelated = $postCommentsRelated;
+            //$comment->reacts= $this->reacts($comment->id,$lang,'comment');
+
+
+            return $this->returnDataWithStatus(['comment'], [$comment],true,$msg);
+
+            /*            return $this->returnSuccessMessageWithStatus(,200,true);*/
         }
 
     }
@@ -991,7 +1087,7 @@ class GroupController extends Controller
             $comment_id = $request->comment_id;
             $comment = Comment::find($comment_id);
             $comment->update([
-               'body'=>$body
+                'body'=>$body
             ]);
             return $this->returnSuccessMessageWithStatus('your comment has been updated successfully',200,true);
         }
@@ -1031,6 +1127,7 @@ class GroupController extends Controller
             // =>Related comments
             foreach ($postComments as $comment) {
                 $user = $this->getUserById($comment->user_id);
+                $comment->model_id = intval($comment->model_id);
                 unset(
                     $comment->user_id,
                     $comment->created_at,
@@ -1041,6 +1138,7 @@ class GroupController extends Controller
                     'name' => $user->name,
                     'image' => $user->personal_image,
                 ];
+
                 /* $postCommentsRelated =Comment::where('model_type','comment')->where('model_id',$comment->id)->get();
                  foreach($postCommentsRelated as $commentRelated) {
                      $user =  $this->getUserById($commentRelated->user_id);
@@ -1054,9 +1152,22 @@ class GroupController extends Controller
                          'reacts'=>$this->reacts($commentRelated->id,$lang,'comment')
                      ];
                  }*/
+
                 //Number of Likes for each comment
+                $reacts =Likes::where('model_type',$model_type)->where('model_id',$model_id)->where('senderId',$this->user->id)->get();
+                if(count($reacts) > 0){
+                    $comment->react_num =intval( $reacts[0]->reactId);
+                }else{
+                    $comment->react_num = 99;
+                }
                 $comment->likes_num = count(Likes::where('model_type', 'comment')->where('model_id', $comment->id)->get());
                 $comment->comments_num = count(Comment::where('model_type', 'comment')->where('model_id', $comment->id)->get());
+                $mayBeMine = Comment::where('model_type', 'comment')->where('user_id', $this->user->id)->get();
+                if(count($mayBeMine) > 0){
+                    $comment->myComment = 1;
+                }else{
+                    $comment->myComment = 0;
+                }
                 if(count(Likes::where('model_type', 'comment')->where('model_id', $comment->id)->where('senderId',$this->user->id)->get()) > 0){
                     $isliked = 1;
                 }else{
@@ -1081,17 +1192,18 @@ class GroupController extends Controller
                 $user = $this->getUserById($likes->senderId);
                 $likes->user = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
             }
             $react->likes =$react_likes;
-            $react->likesNumber = count($react_likes);
+            $react->likes_number = count($react_likes);
         }
         $likesNumber = count(Likes::where('model_type',$model_type)->where('model_id',$model_id)->get());
         //null & react number
         $myReact = Likes::where('model_type',$model_type)->where('model_id',$model_id)->where('senderId',$this->user->id)->get();
         if(count($myReact)>0) {
-           $myReact =  $myReact[0]->reactId;
+            $myReact =  $myReact[0]->reactId;
             $myReact =
                 [
                     'name'=> React::find($myReact)['name_'.$lang],
@@ -1131,14 +1243,46 @@ class GroupController extends Controller
             $model_id = $request->model_id;
             $reactId = $request->reactId;
             $senderId = $this->user->id;
-            //	id		model_type	reactId	senderId	created_at	updated_at
-            Likes::create([
-                'model_id' => $model_id,
-                'model_type' => $model_type,
-                'reactId' => $reactId,
-                'senderId' => $senderId
-            ]);
-            return $this->returnSuccessMessageWithStatus('your like has been added successfully',200,true);
+            $old_likes = Likes::where('model_type',$model_type)->where('model_id',$model_id)->where('senderId',$senderId)->get();
+            if(count($old_likes) > 0) {
+                if($reactId == 99 ){
+                    foreach($old_likes as $old_like_remove){
+                        $old_like_remove->delete();
+                    }
+                    $data =[
+                        'msg'=>'your like has been deleted successfully',
+                        'like'=>null
+                    ];
+                    return $this->returnSuccessMessageWithStatusLikes($data,200,true);
+
+                }else {
+                    $old_likes[0]->update([
+                        'model_id' => $model_id,
+                        'model_type' => $model_type,
+                        'reactId' => $reactId,
+                        'senderId' => $senderId
+                    ]);
+                    $data = [
+                        'msg' => 'your like has been updated successfully',
+                        'like' => $old_likes[0]
+                    ];
+                    return $this->returnSuccessMessageWithStatusLikes($data, 200, true);
+                }
+            }else {
+                //	id		model_type	reactId	senderId	created_at	updated_at
+                $new_like=  Likes::create([
+                    'model_id' => $model_id,
+                    'model_type' => $model_type,
+                    'reactId' => $reactId,
+                    'senderId' => $senderId
+                ]);
+                $data =[
+                    'msg'=>'your like has been added successfully',
+                    'like'=>$new_like
+                ];
+
+            }
+            return $this->returnSuccessMessageWithStatusLikes($data,200,true);
 
         }
     }
@@ -1167,7 +1311,7 @@ class GroupController extends Controller
             $reactId = $request->reactId;
             $like = Likes::find($like_id);
             $like->update([
-               'reactId'=>$reactId
+                'reactId'=>$reactId
             ]);
             return $this->returnSuccessMessageWithStatus('your like has been updated successfully',200,true);
         }
@@ -1228,13 +1372,13 @@ class GroupController extends Controller
 
             $files = $request->file('images');
             foreach ($files as $file) {
-/*
-                $post_media = DB::table('media')->where('model_id', $model_id)->get();
+                /*
+                                $post_media = DB::table('media')->where('model_id', $model_id)->get();
 
-                foreach ($post_media as $media) {
-                    $media->delete();
-                    unlink('media/' . $media->filename);
-                }*/
+                                foreach ($post_media as $media) {
+                                    $media->delete();
+                                    unlink('media/' . $media->filename);
+                                }*/
 
                 $fileextension = $file->getClientOriginalExtension();
 
@@ -1302,7 +1446,7 @@ class GroupController extends Controller
             $group_id = $request->group_id;
             $media_type = $request->media_type;
             $posts = Post::where('group_id', $group_id)->where('postTypeId','post')->get();
-           // return $posts;
+            // return $posts;
             $ids=[];
             foreach($posts as $post) {
                 $ids [] = $post->id;
@@ -1312,10 +1456,10 @@ class GroupController extends Controller
             if(count($media)>0) {
                 foreach ($media as $media_iteam)
                     if (in_array($media_iteam->model_id,$ids )) {
-                      $result [] = $media_iteam;
+                        $result [] = $media_iteam;
                     }
             }
-          //  return $result;
+            //  return $result;
 
             return $this->returnData([$media_type], [$result]);
         }
@@ -1329,9 +1473,9 @@ class GroupController extends Controller
                 return $this->unVerified($this->user_verified);
             }
             $post_id = $request->post_id;
-            $group_id = $request->group_id;
+            $group_id = Post::find($post_id)->group_id;
             $body = $request->body;
-            $group = Group::find($request->group_id);
+            $group = Group::find($group_id);
             $category = Category::find($group->category_id)->id;
             $categoryId = $category;
             $publisherId  = $this->user->id;
@@ -1342,7 +1486,7 @@ class GroupController extends Controller
             $postTypeId = 'post';
             $privacyId = 1;
             $stateId = 1;
-            Post::create([
+            $groupx =Post::create([
                 'title' => $title,
                 'body' => $body,
                 'postTypeId' => $postTypeId,
@@ -1355,7 +1499,18 @@ class GroupController extends Controller
                 'post_id'=>$post_id,
                 'price'=>$price
             ]);
-            return $this->returnSuccessMessage('Post Shared Successfully to your profile',200);
+            if ($groupx) {
+                $msg = 'post has shared successfully';
+                //return $this->returnSuccessMessageWithStatus($msg,200,true);
+                return $this->returnDataWithStatus(['post'], [$groupx],true,$msg);
+                // return $this->returnData([], $values,$msg);
+            } else {
+                $msg = 'Error during shareing your post';
+                return $this->returnDataWithStatus(['msg'], [$msg],false,$msg);
+                // return $this->returnSuccessMessageWithStatus($msg,200,true);
+
+            }
+            //return $this->returnSuccessMessage('Post Shared Successfully to your profile',200);
         }
     }
     public function getShareGroupPost(Request $request){
@@ -1365,7 +1520,8 @@ class GroupController extends Controller
             if (!$this->user_verified) {
                 return $this->unVerified($this->user_verified);
             }
-            $shares = Post::where('group_id',$request->group_id)->where('post_id',$request->post_id)->get();
+
+            $shares = Post::where('post_id',$request->post_id)->get();
             foreach($shares as $groupx){
                 $user = $this->getUserById($groupx->publisherId);
                 $groupx->publisherId = [
@@ -1389,7 +1545,7 @@ class GroupController extends Controller
                 );
 
             }
-            return $this->returnData(['shares'], [$shares],['count'=>count($shares)]);
+            return $this->returnData(['shares'], [$shares],'group shares posts');
         }
     }
     public function getPostshareNumber($group_id,$post_id){
@@ -1412,7 +1568,8 @@ class GroupController extends Controller
                 $user = $this->getUserById($groupx->senderId);
                 $groupx->user = [
                     'name'=>$user->name,
-                    'personal_image'=>$user->personal_image
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
                 ];
                 $groupx->reactId = intval($groupx->reactId);
                 unset(
@@ -1434,6 +1591,58 @@ class GroupController extends Controller
     }
     public function get_all_reacts(){
         return $this->returnData(['reacts'], [React::get()]) ;
+    }
+
+    public function getPosts(Request $request){
+        if($this->valid_token == 0) {
+            return $this->unValidToken($this->valid_token);
+        }else {
+            if (!$this->user_verified) {
+                return $this->unVerified($this->user_verified);
+            }
+
+            $model_type = $request->model_type . '_id';
+            $model_id = $request->model_id;
+            $group_posts = Post::where($model_type, $model_id)->orderBy('created_at', 'ASC')->get();
+            foreach($group_posts as $groupx){
+                $user = $this->getUserById($groupx->publisherId);
+                $groupx->user = [
+                    'name'=>$user->name,
+                    'personal_image'=>$user->personal_image,
+                    'user_id'=>$user->id
+                ];
+                unset(
+                    $groupx->postTypeId,
+                    $groupx->categoryId,
+                    $groupx->group_id,
+                    $groupx->price,
+                    $groupx->title,
+                    $groupx->privacyId,
+                    $groupx->stateId,
+                    $groupx->publisherId,
+                    $groupx->page_id,
+                    $groupx->post_id,
+                    $groupx->created_at,
+                    $groupx->updated_at,
+                );
+
+                $groupx->likes_num = count(Likes::where('model_type','post')->where('model_id',$groupx->id)->get());
+                $groupx->react_num =Likes::where('model_type','post')->where('model_id',$groupx->id)->where('senderId',$this->user->id)->get();
+                if(count($groupx->react_num) > 0){
+                    $groupx->react_num =intval($groupx->react_num[0]->reactId);
+                }else{
+                    $groupx->react_num = 99;
+                }
+                $groupx->comments_num = $this->GetCommentsNumber($groupx->id,'post');
+                $groupx->shares_num = $this->getPostshareNumber($model_id,$groupx->id);
+
+                $groupx->images = $this->Fetchmedia($groupx->id, 'image');
+                $groupx->videos = $this->Fetchmedia($groupx->id, 'video');
+            }
+        /*    return $this->returndata(['posts'], $group_posts,'posts for'.$model_type);*/
+                return $this->returnDataWithStatusList($group_posts, true,'posts for '. $model_type);
+        }
+
     }
 
 }
